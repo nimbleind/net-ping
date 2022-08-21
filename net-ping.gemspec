@@ -37,8 +37,8 @@ Gem::Specification.new do |spec|
 
     # Used for icmp pings.
     spec.add_dependency('win32-security', '>= 0.2.0')
-    spec.add_dependency('cap2', '>= 0.2.2')
   end
+  spec.add_dependency('cap2', '>= 0.2.2') if RUBY_PLATFORM =~ /linux/i
 
   spec.description = <<-EOF
     The net-ping library provides a ping interface for Ruby. It includes

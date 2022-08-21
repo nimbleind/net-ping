@@ -8,6 +8,47 @@ require 'test-unit'
 require 'fakeweb'
 require 'net/ping/http'
 
+# https://github.com/chrisk/fakeweb/commit/eed5056d19af2fe56d3f362ed32095bd8fb3fff7
+module FakeWeb
+  class StubSocket
+    def closed?
+      @closed ||= false
+      @closed
+    end
+
+    def close
+      @closed = true
+    end
+  end
+end
+
+# https://github.com/chrisk/fakeweb/commit/5bd70b72962081e46c7b22a39d00b7660d0ad30e
+module Net
+  class BufferedIO
+    def initialize_with_fakeweb(io, read_timeout: 60, write_timeout: 60, continue_timeout: nil, debug_output: nil)
+      @read_timeout = read_timeout
+      @write_timeout = write_timeout
+      @continue_timeout = continue_timeout
+      @debug_output = debug_output
+      @rbuf = ''.b
+
+      @io = case io
+      when Socket, OpenSSL::SSL::SSLSocket, IO
+        io
+      when String
+        if !io.include?("\0") && File.exists?(io) && !File.directory?(io)
+          File.open(io, "r")
+        else
+          StringIO.new(io)
+        end
+      end
+      raise "Unable to create local socket" unless @io
+    end
+    alias_method :initialize_without_fakeweb, :initialize
+    alias_method :initialize, :initialize_with_fakeweb
+  end
+end
+
 class TC_Net_Ping_HTTP < Test::Unit::TestCase
   def setup
     ENV['http_proxy'] = ENV['https_proxy'] = ENV['no_proxy'] = nil
@@ -29,7 +70,7 @@ class TC_Net_Ping_HTTP < Test::Unit::TestCase
     FakeWeb.register_uri(:head, @uri_http_domain_scheme, :body => "PONG")
     FakeWeb.register_uri(:get, @uri_http_domain_schemes, :body => "PONG")
     FakeWeb.register_uri(:head, @uri_http_domain_schemes, :body => "PONG")
-    FakeWeb.register_uri(:head, "http://jigsaw.w3.org/HTTP/300/302.html",
+    FakeWeb.register_uri(:head, "https://jigsaw.w3.org/HTTP/300/302.html",
                          :body => "PONG",
                          :location => "#{@uri}",
                          :status => ["302", "Found"])
@@ -120,7 +161,7 @@ class TC_Net_Ping_HTTP < Test::Unit::TestCase
 
   test 'port attribute is set to expected value' do
     assert_equal(80, @http.port)
-    assert_equal(443, Net::Ping::HTTP.new('https://github.com/path').port)
+    assert_equal(443, Net::Ping::HTTP.new('https://github.com/github').port)
     assert_equal(80, Net::Ping::HTTP.new.port)
   end
 
@@ -137,9 +178,9 @@ class TC_Net_Ping_HTTP < Test::Unit::TestCase
   # TODO: Figure out how to do this with FakeWeb.
   test 'ping fails if timeout exceeded' do
     FakeWeb.allow_net_connect = true
-    @http = Net::Ping::HTTP.new('https://github.com/path', 80, 0.01)
+    @http = Net::Ping::HTTP.new('https://www.google.com', 443, 0.001)
     assert_false(@http.ping?)
-    assert_equal('execution expired', @http.exception)
+    assert(['execution expired', 'Net::OpenTimeout'].include?(@http.exception))
   end
 
   test 'exception attribute basic functionality' do
@@ -192,18 +233,18 @@ class TC_Net_Ping_HTTP < Test::Unit::TestCase
   end
 
   test 'redirects succeed by default' do
-    @http = Net::Ping::HTTP.new("http://jigsaw.w3.org/HTTP/300/302.html")
+    @http = Net::Ping::HTTP.new("https://jigsaw.w3.org/HTTP/300/302.html")
     assert_true(@http.ping)
   end
 
   test 'redirect fail if follow_redirect is set to false' do
-    @http = Net::Ping::HTTP.new("http://jigsaw.w3.org/HTTP/300/302.html")
+    @http = Net::Ping::HTTP.new("https://jigsaw.w3.org/HTTP/300/302.html")
     @http.follow_redirect = false
     assert_false(@http.ping)
   end
 
   test 'ping with redirect limit set to zero fails' do
-    @http = Net::Ping::HTTP.new("http://jigsaw.w3.org/HTTP/300/302.html")
+    @http = Net::Ping::HTTP.new("https://jigsaw.w3.org/HTTP/300/302.html")
     @http.redirect_limit  = 0
     assert_false(@http.ping)
     assert_equal("Redirect limit exceeded", @http.exception)
