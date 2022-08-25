@@ -10,6 +10,7 @@
 #########################################################################
 require 'test-unit'
 require 'net/ping/external'
+require 'mkmf'
 
 class TC_Net_Ping_External < Test::Unit::TestCase
   def setup
@@ -47,6 +48,7 @@ class TC_Net_Ping_External < Test::Unit::TestCase
   end
 
   test "pinging a good host returns true" do
+    omit_if(find_executable0('ping').nil?)
     assert_true(@pe.ping?)
   end
 
@@ -55,12 +57,14 @@ class TC_Net_Ping_External < Test::Unit::TestCase
   end
 
   test "duration basic functionality" do
+    omit_if(find_executable0('ping').nil?)
     assert_nothing_raised{ @pe.ping }
     assert_respond_to(@pe, :duration)
     assert_kind_of(Float, @pe.duration)
   end
 
   test "duration is unset if a bad ping follows a good ping" do
+    omit_if(find_executable0('ping').nil?)
     assert_nothing_raised{ @pe.ping }
     assert_not_nil(@pe.duration)
     assert_false(@pe.ping?(@bogus))
@@ -111,6 +115,7 @@ class TC_Net_Ping_External < Test::Unit::TestCase
   end
 
   test "pinging a good host results in no exception data" do
+    omit_if(find_executable0('ping').nil?)
     assert_nothing_raised{ @pe.ping }
     assert_nil(@pe.exception)
   end

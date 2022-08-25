@@ -91,7 +91,8 @@ class TC_PingTCP < Test::Unit::TestCase
     msg = "+this test may fail depending on your network environment+"
     assert_respond_to(@tcp, :exception)
     assert_nothing_raised{ @tcp.ping }
-    assert_nil(@tcp.exception, msg)
+    # XXX: In some environment, it will get some execption
+    assert(@tcp.exception.nil? || @tcp.exception == Errno::ECONNREFUSED, msg)
   end
 
   def test_warning

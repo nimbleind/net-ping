@@ -43,7 +43,7 @@ class TC_PingICMP < Test::Unit::TestCase
   def setup
     @host = '127.0.0.1' # 'localhost'
     @icmp = Net::Ping::ICMP.new(@host)
-    @concurrency = 3
+    @concurrency = 2
   end
 
   test "icmp ping basic functionality" do
@@ -71,7 +71,8 @@ class TC_PingICMP < Test::Unit::TestCase
 
   test "threaded icmp ping returns expected results" do
     omit_if(@@jruby)
-    ips = ['8.8.4.4', '8.8.9.9', '127.0.0.1', '8.8.8.8', '8.8.8.9']
+    # ips = ['8.8.4.4', '8.8.9.9', '127.0.0.1', '8.8.8.8', '8.8.8.9']
+    ips = ['127.0.0.1', '8.8.8.9']
     queue = Queue.new
     threads = []
 
@@ -81,10 +82,10 @@ class TC_PingICMP < Test::Unit::TestCase
       threads << Thread.new(queue) do |q|
         ip = q.pop
         icmp = Net::Ping::ICMP.new(ip, nil, 1)
-        if ip =~ /9/
-          assert_false(icmp.ping?)
+        if ip =~ /\.9$/
+          assert_false(icmp.ping?, "#{ip} should not be pingable")
         else
-          assert_true(icmp.ping?)
+          assert_true(icmp.ping?, "#{ip} should be pingable")
         end
       end
     }
