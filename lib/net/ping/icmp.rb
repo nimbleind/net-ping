@@ -43,7 +43,9 @@ module Net
           raise StandardError, 'requires root privileges or setcap net_raw'
         end
       rescue LoadError
-        @sock_type = Socket::SOCK_DGRAM
+        unless Process.euid == 0
+          @sock_type = Socket::SOCK_DGRAM
+        end
       end
 
       if File::ALT_SEPARATOR
